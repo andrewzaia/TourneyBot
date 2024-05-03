@@ -25,35 +25,52 @@ client.on("messageCreated", async (msg) => {
     }
 });
 
-client.on("guildMemberUpdate", async (oldMember, newMember) => {
-    const announcementChannelId = "fb0d841f-cef3-4218-b031-304e1aa1bb21"; // Channel ID
+client.on("rolesUpdated", async (updatedMembers, oldMembers) => {
+    // client.messages.send("fb0d841f-cef3-4218-b031-304e1aa1bb21", "Announcement channel identified!");
+    const announcementChannelId = "fb0d841f-cef3-4218-b031-304e1aa1bb21"; // Replace with your actual channel ID
+    console.log(`Set announcement channel ${announcementChannelId}`)
     const roles = {
         copper: "23794514",
         silver: "23794513",
         gold: "23794500"
     };
-  
-    // Helper function to determine the role change based on role IDs
-    function detectRoleChangeById(roleId) {
-        const hadRole = oldMember.roles.includes(roleId);
-        const hasRole = newMember.roles.includes(roleId);
-        if (hadRole && !hasRole) {
-            return -1; // Lost role
-        } else if (!hadRole && hasRole) {
-            return 1; // Gained role
+
+    // Create a string from the roles object to make it readable
+    let rolesString = Object.entries(roles).map(([roleName, roleId]) => `${roleName}: ${roleId}`).join('\n');
+
+    // Print the formatted string to the console
+    console.log(`Set roles:\n${rolesString}`);
+
+    // Map old members by userId for easy access
+    const oldMembersMap = new Map(oldMembers.map(member => [member.userId, member.roleIds]));
+
+    updatedMembers.members.forEach(member => {
+        const oldRoleIds = oldMembersMap.get(member.userId) || [];
+
+        // Function to detect role changes
+        function detectRoleChange(oldRoleIds, newRoleIds, roleId) {
+            const hadRole = oldRoleIds.includes(roleId);
+            const hasRole = newRoleIds.includes(roleId);
+            if (hadRole && !hasRole) {
+                return -1; // Lost role
+            } else if (!hadRole && hasRole) {
+                return 1; // Gained role
+            }
+            return 0; // No change
         }
-        return 0; // No change
-    }
-  
-    // Check each role for changes and send messages accordingly
-    for (const [tier, roleId] of Object.entries(roles)) {
-        const change = detectRoleChangeById(newMember, roleId);
-        if (change === 1) {
-            client.channels.get(announcementChannelId).send(`${newMember.user.name} has just obtained the ${tier} role!`);
-        } else if (change === -1) {
-            client.channels.get(announcementChannelId).send(`${newMember.user.name} has just lost the ${tier} role.`);
+
+        // Check each role for changes and send messages accordingly
+        for (const [tier, roleId] of Object.entries(roles)) {
+            const change = detectRoleChange(oldRoleIds, member.roleIds, roleId);
+            if (change === 1) {
+                client.messages.send("fb0d841f-cef3-4218-b031-304e1aa1bb21", `${member.userId} has just obtained the ${tier} role!`);
+                // client.channels.get(announcementChannelId).send(`${member.userId} has just obtained the ${tier} role!`);
+            } else if (change === -1) {
+                client.messages.send("fb0d841f-cef3-4218-b031-304e1aa1bb21", `${member.userId} has just lost the ${tier} role.`);
+                // client.channels.get(announcementChannelId).send(`${member.userId} has just lost the ${tier} role.`);
+            }
         }
-    }
+    });
 });
 
 // client.on("debug", console.log);
